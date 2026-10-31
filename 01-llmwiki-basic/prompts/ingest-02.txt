@@ -1,0 +1,12 @@
+작업 위치는 저장소 루트이며 모든 실습 경로는 01-llmwiki-basic/ 아래다.
+01-llmwiki-basic/AGENTS.md와 wiki/index.md, 기존 위키 페이지를 읽어라.
+선행 산출물 wiki/sources/project-brief.md와 wiki/topics/training-project.md가 없다면
+사실이나 성공 기록을 만들지 말고 ingest-01을 먼저 실행해야 한다고 보고하고 중단하라.
+raw/02-meeting-notes.md를 ingest하여 wiki/sources/meeting-notes.md를 만들고
+기존 wiki/topics/training-project.md를 갱신하라. 같은 주제의 중복 페이지를 만들지 마라.
+확정된 일정 변경과 승인되지 않은 인원·교육 방식 제안을 구분하라.
+충돌은 두 원본의 절 링크와 확인 질문을 함께 남기고 최신 날짜만으로 덮어쓰지 마라.
+원본 요약과 주제를 서로 연결하고 index를 갱신하라. log에는 실제 작업 기록만 추가하라.
+쓰기 범위는 wiki/뿐이며 raw/, examples/, 규약, 스크립트와 과거 log를 변경하지 마라.
+examples/를 읽거나 외부 검색, Git 커밋을 하지 마라. 가능하면 파일 읽기·편집 도구로 직접 작업하라.
+마지막에 이전 위키 대비 바뀐 주장, 남은 충돌, 변경 파일을 보고하라.

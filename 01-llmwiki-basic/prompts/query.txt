@@ -1,0 +1,12 @@
+작업 위치는 저장소 루트이며 모든 실습 경로는 01-llmwiki-basic/ 아래다.
+01-llmwiki-basic/AGENTS.md를 직접 읽어라.
+선행 산출물 wiki/sources/project-brief.md, wiki/sources/meeting-notes.md,
+wiki/topics/training-project.md가 없다면 사실이나 성공 기록을 만들지 말고
+ingest-01과 ingest-02를 먼저 실행해야 한다고 보고하고 중단하라.
+wiki/index.md부터 관련 위키를 찾아 읽고 다음에 답하라.
+“이 교육의 현재 일정과 운영 방식은 무엇이며, 안내문 발송 전에 무엇을 확인해야 하는가?”
+확정 사실·제안·미확정 사항을 구분하고 위키 및 원본 근거를 링크하라.
+자료에 없는 담당자나 결정을 만들어내지 마라. 이번에는 답변 파일을 만들지 말고
+규약에 따라 query 수행 사실만 wiki/log.md 끝에 추가하라.
+그 외 파일과 과거 log는 변경하지 마라. examples/를 읽거나 외부 검색, Git 커밋을 하지 마라.
+가능하면 파일 읽기·편집 도구로 직접 작업하라.

@@ -1,0 +1,13 @@
+작업 위치는 저장소 루트이며 모든 실습 경로는 01-llmwiki-basic/ 아래다.
+01-llmwiki-basic/AGENTS.md를 직접 읽고 규약을 따라 위키 파일을 생성하라.
+이번 단계에서는 raw/01-project-brief.md만 읽어 ingest하라.
+raw/02-meeting-notes.md와 examples/는 아직 읽거나 반영하지 마라.
+wiki/index.md와 기존 주제 목록을 먼저 확인하여 중복 페이지를 피하라.
+wiki/sources/project-brief.md에 원본 제목·문서 일자·상태·핵심 내용 요약을 만들고,
+wiki/topics/training-project.md에 목표·대상·운영·미확정 사항을 정리하라.
+주장마다 원본의 절로 이어지는 상대 Markdown 링크를 달고 요약과 주제를 서로 연결하라.
+wiki/index.md에 각 페이지 링크와 한 줄 설명을 추가하고 wiki/log.md에 실제 ingest를 기록하라.
+기존 위키가 있다면 그 내용과 과거 기록을 보존하면서 이번 원본의 정보만 통합하라.
+쓰기 범위는 wiki/뿐이며 raw/, examples/, 규약, 스크립트를 수정하지 마라.
+외부 검색이나 Git 커밋을 하지 마라. 가능하면 파일 읽기·편집 도구로 직접 작업하라.
+마지막에 생성·수정한 파일, 처리 결과와 확인이 필요한 사항을 보고하라.

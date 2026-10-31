@@ -1,0 +1,13 @@
+작업 위치는 저장소 루트이며 모든 실습 경로는 01-llmwiki-basic/ 아래다.
+01-llmwiki-basic/AGENTS.md를 직접 읽고 wiki/만 대상으로 lint하라.
+선행 산출물 wiki/sources/project-brief.md, wiki/sources/meeting-notes.md,
+wiki/topics/training-project.md가 없다면 사실이나 성공 기록을 만들지 말고
+ingest-01과 ingest-02를 먼저 실행해야 한다고 보고하고 중단하라.
+끊어진 상대 링크, index 누락, 고립 페이지, 출처 없는 주장,
+날짜가 지난 주장, 누락된 충돌, 중복 주제, 근거가 부족한 부분을 점검하라.
+필요한 원본 근거와 직접 대조하되 examples/는 읽지 마라.
+검사 범위와 발견 사항을 파일·절 단위로 보고하라.
+명백한 링크/index 오류는 수정하되, 사실 판단이 필요한 사항은 질문으로 남겨라.
+쓰기 범위는 wiki/뿐이며 raw/, examples/, 규약, 스크립트와 과거 log를 변경하지 마라.
+외부 검색, Git 커밋을 하지 말고 log에 실제 점검 결과를 추가하라.
+가능하면 파일 읽기·편집 도구로 직접 작업하라.

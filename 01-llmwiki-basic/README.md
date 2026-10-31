@@ -10,6 +10,62 @@
 
 **모든 프로젝트명·인물·일정·수치는 가상입니다. 실제 회사의 정책이나 결정이 아닙니다.**
 
+## Python 스크립트로 실행
+
+Python **3.9 이상**과 사용할 CLI 하나를 설치하고 해당 계정으로 먼저 로그인합니다. 실행기와 테스트는 표준 라이브러리만 사용합니다. [requirements.txt](requirements.txt)에 별도 Python 패키지가 없음을 명시했습니다. 실행에는 각 서비스의 사용 권한이 필요하며 사용량에 따라 비용이 발생할 수 있습니다. 설치·로그인은 스크립트가 대신 수행하지 않습니다.
+
+저장소 루트에서 실행합니다. 인자 없이 실행하면 터미널에서 도구를 선택합니다.
+
+```console
+python3 -m pip install -r 01-llmwiki-basic/requirements.txt
+python3 01-llmwiki-basic/build_wiki.py
+```
+
+첫 줄은 공통 준비 명령이며 추가 설치할 패키지가 없어 생략해도 됩니다. [build_wiki.py](build_wiki.py)는 어느 디렉터리에서 호출해도 자신의 위치를 기준으로 저장소 루트에서 CLI를 실행합니다. 다른 위치에서는 스크립트의 절대 경로를 지정하세요.
+
+```console
+python3 01-llmwiki-basic/build_wiki.py --agent agy
+python3 01-llmwiki-basic/build_wiki.py --agent codex
+python3 01-llmwiki-basic/build_wiki.py --agent claude
+python3 01-llmwiki-basic/build_wiki.py --agent cursor
+python3 01-llmwiki-basic/build_wiki.py --agent copilot
+```
+
+위 명령 중 **하나만 선택**하면 됩니다. 기본 `--step all`은 `ingest-01` → `ingest-02` → `query` → `lint`를 별도 CLI 호출로 순서대로 실행합니다. 대화 세션을 공유하지 않고 파일로 지식을 이어갑니다. [prompts/](prompts/)의 공통 프롬프트를 사용하며 생성 위치는 `01-llmwiki-basic/wiki/`입니다. 실제로 선택된 모델과 인증 설정은 각 CLI의 기존 설정을 사용합니다.
+
+| 선택값 | 필요한 실행 파일 | 호출 방식 | 설치·인증 및 옵션 참고 |
+| --- | --- | --- | --- |
+| `agy` | `agy` (Antigravity CLI) | `agy --mode accept-edits -p PROMPT` | [Antigravity CLI](https://antigravity.google/docs/cli/reference) — 먼저 `agy`를 실행해 로그인 |
+| `codex` | `codex` | `codex exec --sandbox workspace-write PROMPT` | [Codex CLI](https://learn.chatgpt.com/docs/non-interactive-mode) — `codex login` |
+| `claude` | `claude` (Claude Code) | `claude --permission-mode acceptEdits -p PROMPT` | [Claude Code CLI](https://code.claude.com/docs/en/cli-reference) — 먼저 `claude`를 실행해 로그인 |
+| `cursor` | `cursor-agent` | `cursor-agent --force -p PROMPT` | [Cursor CLI](https://cursor.com/docs/cli/reference/parameters) — `cursor-agent login` |
+| `copilot` | `copilot` (GitHub Copilot CLI) | `copilot --allow-tool=read --allow-tool=write -p PROMPT` | [Copilot CLI](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-programmatic-reference) — `copilot login` |
+
+`cursor`는 에디터 실행 명령이 아닌 `cursor-agent`를 사용합니다. `copilot`은 기존 `gh copilot` 확장과 다릅니다. CLI 버전에 따라 옵션과 승인 정책이 달라질 수 있으므로 설치된 CLI의 `--help`를 확인하세요. 위 옵션은 파일 편집을 가능하게 하며 Cursor의 `--force`는 명시적으로 거부된 항목 외 명령도 허용합니다. 원본 보존과 `wiki/` 쓰기 범위는 프롬프트 규약이고, 모든 도구에 동일한 파일 접근 격리를 제공하는 것은 아닙니다. 계정·관리 정책에서 작업을 거부하면 CLI 진단을 확인하세요.
+
+실행 전에 명령의 **인자 배열(JSON)**과 전체 프롬프트를 확인할 수 있습니다. 미리보기는 CLI 설치·로그인 없이 사용할 수 있고 파일을 수정하지 않습니다.
+
+```console
+python3 01-llmwiki-basic/build_wiki.py --agent codex --dry-run
+python3 01-llmwiki-basic/build_wiki.py --agent claude --step ingest-01
+python3 01-llmwiki-basic/build_wiki.py --agent claude --step ingest-02
+python3 01-llmwiki-basic/build_wiki.py --agent claude --step query
+python3 01-llmwiki-basic/build_wiki.py --agent claude --step lint
+python3 01-llmwiki-basic/build_wiki.py --help
+```
+
+`ingest-02`는 첫 ingest 결과가 필요하고, 이 실행기의 `query`와 `lint`는 두 ingest 결과가 모두 필요합니다. 단독 실행 전 기존 위키를 확인하세요. 도구를 바꿔 다음 단계를 실행해도 같은 위키 파일을 읽습니다. 비대화형 환경에서는 `--agent`를 반드시 지정합니다.
+
+CLI가 실패 코드로 종료하면 이후 호출을 중단하고 해당 코드를 반환합니다. **이미 반영된 파일은 남으며 자동 복구·초기화하지 않습니다.** 위키를 검토한 뒤 실패한 단계만 다시 실행하세요. CLI가 종료 코드 0을 반환해도 작업 거부나 불완전한 결과가 있을 수 있습니다. 스크립트는 위키의 내용이나 단계별 산출물 존재를 자동 검증하지 않으므로 아래 완료 기준과 CLI 출력을 확인해야 합니다. 재실행은 기존 위키 갱신 요청이며 시작 상태로 초기화하지 않습니다.
+
+개발 검증은 실제 모델 호출 없이 모의 CLI로 인자·작업 위치·단계 순서·실패 전파·미리보기의 무호출을 검사합니다.
+
+```console
+python3 -m unittest discover -s 01-llmwiki-basic/tests -v
+```
+
+이 검증은 각 서비스의 로그인 성공이나 실제 위키 생성 품질을 보장하지 않습니다. 아래 수동 실습 프롬프트도 계속 사용할 수 있습니다.
+
 ## 세 계층
 
 | 계층 | 위치 | 역할 |
@@ -22,6 +78,10 @@
 01-llmwiki-basic/
 ├── AGENTS.md
 ├── README.md
+├── build_wiki.py                 # 도구 선택 및 단계별 CLI 실행
+├── requirements.txt              # 외부 Python 패키지 없음
+├── prompts/                      # CLI에 전달하는 단계별 프롬프트
+├── tests/                        # 실제 모델 호출 없는 실행기 검증
 ├── raw/
 │   ├── 01-project-brief.md
 │   └── 02-meeting-notes.md
