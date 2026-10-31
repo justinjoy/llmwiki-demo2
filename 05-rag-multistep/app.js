@@ -1,18 +1,19 @@
 'use strict';
 const $ = id => document.getElementById(id);
-const state = {token:null, config:null, active:null, epoch:0, runs:{}, polling:false};
+const state = {token:null, config:null, active:null, epoch:0, runs:{}, polling:false, resetting:false};
 function node(tag, text, className) { const el=document.createElement(tag); el.textContent=text; if(className)el.className=className; return el; }
 async function api(path, body) {
   const response=await fetch(path, body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json','X-Run-Token':state.token},body:JSON.stringify(body)});
   const data=await response.json(); if(!response.ok)throw new Error(data.error||`HTTP ${response.status}`); return data;
 }
 function controls() {
-  const busy=!!state.active, config=state.config;
+  const busy=!!state.active||state.resetting, config=state.config;
   $('backend').disabled=$('top-k').disabled=busy||!config;
   const backend=config?.backends.find(b=>b.id===$('backend').value);
   $('rag').disabled=busy||!backend?.available;
   $('logic').disabled=busy||!config?.logic.available;
-  $('cancel').disabled=!busy;
+  $('cancel').disabled=!state.active;
+  $('logic-reset').disabled=busy||!config;
   $('backend-info').textContent=backend?`${backend.label} · ${backend.available?'실행 파일 발견 (인증 상태는 호출 시 확인)':'CLI 설치 필요'} · 모델: ${backend.model||'CLI 기본 설정'} · ${backend.isolation}`:'';
 }
 function sources() {
@@ -57,12 +58,32 @@ async function poll(id, epoch) {
   }catch(error){if(epoch===state.epoch){$('status').textContent=error.message+' · 새로고침하여 다시 연결하세요.';}}
 }
 async function start(kind) {
-  if(state.active)return;
+  if(state.active||state.resetting)return;
   state.active='pending';controls();const epoch=++state.epoch;
   try {
     const run=await api('/api/runs',{kind,backend:$('backend').value,top_k:Number($('top-k').value)});
     state.active=run.id;poll(run.id,epoch);
   }catch(error){state.active=null;controls();$('status').textContent=error.message;}
+}
+async function resetLogic() {
+  if(state.active||state.resetting||!state.config)return;
+  state.resetting=true;++state.epoch;controls();
+  try {
+    await api('/api/logic/reset',{});
+    delete state.runs.logic;
+    if(state.config.latest)delete state.config.latest.logic;
+    WirelogViz.renderInputs($('logic-inputs'),state.config.facts,state.config.logic_labels,document);
+    WirelogViz.renderResult($('logic-output'),{status:'idle'},document);
+    $('facts').textContent=JSON.stringify(state.config.facts,null,2);
+    $('rules').textContent=state.config.rules;
+    $('logic-download').hidden=true;$('logic-download').removeAttribute('href');
+    for(const details of document.querySelectorAll('#ontology details'))details.open=false;
+    $('status').textContent='온톨로지 관계 추론을 초기화했습니다. 다시 실행할 수 있습니다.';
+  } catch(error) {
+    $('status').textContent='초기화 실패: '+error.message;
+  } finally {
+    state.resetting=false;controls();
+  }
 }
 async function init() {
   controls();
@@ -83,7 +104,8 @@ async function init() {
     if(state.active)poll(state.active,epoch);
   }catch(error){$('status').textContent=error.message;}
 }
+$('logic-reset').addEventListener('click',resetLogic);
 $('rag').addEventListener('click',()=>start('rag'));$('logic').addEventListener('click',()=>start('logic'));
 $('cancel').addEventListener('click',async()=>{if(!state.active||state.active==='pending')return;try{await api('/api/runs/'+state.active+'/cancel',{});$('status').textContent='취소 요청 중…';}catch(error){$('status').textContent=error.message;}});
-for(const id of ['backend','top-k'])$(id).addEventListener('change',()=>{if(state.active)return;state.epoch++;sources();controls();$('status').textContent='설정 변경됨 · 이전 결과에는 실행 당시 설정을 표시합니다.';});
+for(const id of ['backend','top-k'])$(id).addEventListener('change',()=>{if(state.active||state.resetting)return;state.epoch++;sources();controls();$('status').textContent='설정 변경됨 · 이전 결과에는 실행 당시 설정을 표시합니다.';});
 init();

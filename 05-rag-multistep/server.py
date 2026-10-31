@@ -71,6 +71,12 @@ class RunManager:
             self.worker.start()
             return ident
 
+    def reset_logic(self):
+        with self.lock:
+            if self.active:
+                raise RuntimeError('실행이 끝나거나 취소된 후 초기화하세요.')
+            self.latest.pop('logic', None)
+
     def cancel(self, ident):
         with self.lock:
             if self.active == ident:
@@ -186,6 +192,9 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(body, dict):
                 raise ValueError('JSON 객체가 필요합니다.')
             manager, path = self.server.manager, urlsplit(self.path).path
+            if path == '/api/logic/reset':
+                manager.reset_logic()
+                return self.send_data(200, {'reset': True})
             if path == '/api/runs':
                 kind = body.get('kind')
                 backend = validate_backend(body.get('backend', manager.default_backend))

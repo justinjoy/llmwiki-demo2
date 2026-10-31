@@ -12,7 +12,7 @@
 <div class="logic-panel rule-panel"><h3>2. 어떻게 연결하나요?</h3><p class="muted">아래 규칙을 입력 사실에 반복 적용합니다.</p>
 <ol class="rule-list"><li id="rule-direct"><b>선행 조건을 순서로 바꾸기</b><p>“B를 하려면 A가 필요하다” → “A가 B보다 먼저다.”</p></li><li id="rule-chain"><b>순서를 이어 붙이기</b><p>“A가 B보다 먼저”이고 “B가 C보다 먼저”이면 → “A가 C보다 먼저다.”</p></li><li id="rule-handoff"><b>앞 단계의 결과물을 넘기기</b><p>“B는 A가 필요”하고 “A가 X를 만든다”면 → “X는 B의 입력이다.”</p></li></ol>
 <p class="note">새 관계를 더 이상 찾을 수 없을 때까지 연결합니다. 단계별 결과물 자체는 입력 사실이고, <strong>어디로 넘길지</strong>를 규칙으로 도출합니다.</p></div></div>
-<div class="logic-actions"><button id="logic">온톨로지 관계 추론 실행</button><span>이 영역은 LLM을 호출하지 않습니다.</span></div><p id="logic-info" class="muted"></p>
+<div class="logic-actions"><button id="logic">온톨로지 관계 추론 실행</button><button id="logic-reset" class="secondary" disabled>초기화</button><span>이 영역은 LLM을 호출하지 않습니다.</span></div><p id="logic-info" class="muted"></p>
 <div class="logic-panel result-panel"><h3>3. 그래서 무엇을 알게 됐나요?</h3><div id="logic-output"><p class="empty-result">아직 실행하지 않았습니다. 위 사실과 규칙을 입력해 실제 추론 결과를 확인하세요.</p></div></div>
 <p class="note">입력한 사실의 진위는 사람이 확인해야 합니다. 이 결과는 주어진 네 단계 예제의 관계이며, 위 RAG 답변 비교에 자동 주입되지 않습니다.</p>
 <details><summary>개발자용 · 실제 엔진, 입력 데이터와 규칙</summary><p>PyreWire가 Wirelog 규칙을 실행합니다. 아래 데이터는 실행 입력의 원본입니다.</p><pre id="facts"></pre><pre id="rules"></pre></details><a id="logic-download" hidden>관계 추론 실행 JSON 보기</a></section>

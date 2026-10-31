@@ -99,4 +99,35 @@ class ServerTests(unittest.TestCase):
         self.manager.logic_status={'available':False,'detail':'missing'}
         self.assertEqual(self.request('POST','/api/runs',{'kind':'logic'})[0],503)
 
+    def test_reset_only_hides_latest_logic_and_keeps_history(self):
+        rag=self.manager.start('rag');self.manager.worker.join(3)
+        logic_id=self.manager.start('logic');self.manager.worker.join(3)
+        saved=Path(self.tmp.name)/logic_id/'result.json'
+        before=saved.read_bytes()
+        self.assertEqual(self.request('POST','/api/logic/reset',{},**{'X-Run-Token':''})[0],403)
+        self.assertEqual(self.request('POST','/api/logic/reset',{},Origin='http://evil.example')[0],403)
+        self.assertEqual(self.manager.latest['logic'],logic_id)
+        self.assertEqual(self.request('POST','/api/logic/reset',{})[0],200)
+        status=json.loads(self.request('GET','/api/status')[1])
+        self.assertNotIn('logic',status['latest'])
+        self.assertEqual(status['latest']['rag'],rag)
+        self.assertEqual(saved.read_bytes(),before)
+        self.assertEqual(self.request('GET','/api/runs/'+logic_id)[0],200)
+        self.assertEqual(self.request('POST','/api/logic/reset',{})[0],200)
+        rerun=self.manager.start('logic');self.manager.worker.join(3)
+        self.assertEqual(self.manager.latest['logic'],rerun)
+        self.assertEqual(self.manager.snapshot(rerun)['status'],'completed')
+
+    def test_reset_cannot_hide_an_active_operation(self):
+        entered=threading.Event()
+        def slow(cancel,**kwargs):
+            entered.set();cancel.wait(3);raise Cancelled()
+        self.manager.logic=slow
+        ident=self.manager.start('logic');entered.wait(1)
+        self.assertEqual(self.request('POST','/api/logic/reset',{})[0],409)
+        self.assertEqual(self.manager.latest['logic'],ident)
+        self.manager.cancel(ident);self.manager.worker.join(3)
+        self.assertEqual(self.request('POST','/api/logic/reset',{})[0],200)
+        self.assertNotIn('logic',self.manager.latest)
+
 if __name__=='__main__':unittest.main()
