@@ -1,0 +1,8 @@
+# 사용자 원본과 생성된 지식은 기본적으로 로컬에 유지
+/raw/*
+!/raw/.gitkeep
+/.prepared/
+/.llmwiki.lock
+/wiki/sources/
+/wiki/topics/
+/wiki/answers/

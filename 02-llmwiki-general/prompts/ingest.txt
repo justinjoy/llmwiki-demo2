@@ -1,0 +1,7 @@
+JSON의 document 한 건을 ingest하라. .prepared/manifest.json과 지정된 extracted를 읽어라.
+index와 기존 주제를 먼저 확인하고 source 경로에 원본별 요약을 생성 또는 갱신하라.
+기존에 관련 주제가 있으면 같은 파일을 갱신하고 없으면 실제 자료에 맞는 topic을 만들어라.
+요약·주제를 서로 연결하고 원본 및 추출 위치로 근거를 달아라.
+missing_originals가 있으면 해당 요약과 주제에 원본 부재를 표시하되 과거 지식을 삭제하지 마라.
+index에 요약과 주제를 등록하고 오늘의 ingest 실제 작업 기록을 log 끝에 추가하라.
+원본과 .prepared/는 변경하지 마라. 변경 파일과 확인할 사항을 보고하라.

@@ -1,0 +1,4 @@
+# Python 3.9+; agent CLI는 별도 설치·로그인
+python-docx>=1.2.0,<2
+pypdf>=6.10.0,<7
+defusedxml>=0.7.1,<1
