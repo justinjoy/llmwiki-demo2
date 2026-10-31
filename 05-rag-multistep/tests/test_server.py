@@ -74,7 +74,10 @@ class ServerTests(unittest.TestCase):
         with self.assertRaises(ValueError):self.manager.start('other')
         with self.assertRaises(ValueError):self.manager.start('rag',2,'bad')
     def test_http_security_and_static_allowlist(self):
-        self.assertEqual(self.request('GET','/api/status')[0],200)
+        code,data=self.request('GET','/api/status')
+        self.assertEqual(code,200)
+        self.assertEqual(json.loads(data)['logic_labels']['steps']['facts'],'facts 추출')
+        self.assertEqual(self.request('GET','/logic-viz.js')[0],200)
         for path in ['/server.py','/runs/a/result.json','/../README.md']:
             self.assertEqual(self.request('GET',path)[0],404)
         self.assertEqual(self.request('GET','/',Host='evil.example')[0],403)
@@ -89,6 +92,10 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(code,202);self.manager.worker.join(3)
         ident=json.loads(data)['id']
         self.assertEqual(self.request('GET','/api/runs/'+ident)[0],200)
+        snapshot=self.manager.snapshot(ident)
+        self.assertEqual(snapshot['logic_labels']['artifacts']['facts_file'],'출처가 달린 facts 파일')
+        snapshot['logic_labels']['steps']['install']='changed'
+        self.assertEqual(self.manager.snapshot(ident)['logic_labels']['steps']['install'],'Claude Code CLI 설치')
         self.manager.logic_status={'available':False,'detail':'missing'}
         self.assertEqual(self.request('POST','/api/runs',{'kind':'logic'})[0],503)
 

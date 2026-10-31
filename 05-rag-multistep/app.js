@@ -38,19 +38,17 @@ function render(run) {
     }
     $('rag-meta').textContent=`실행 ${run.id} · CLI ${run.backend} · 모델 ${run.model||'CLI 기본 설정'} · Top K ${run.top_k} · ${run.status}${run.error?' · '+run.error:''}`;
   } else {
-    const area=$('logic-output');area.replaceChildren();
-    if(run.result){
-      const r=run.result;area.append(node('p',`${r.engine} ${r.version} · before ${r.before.length}쌍 · input_of ${Object.keys(r.input_of).length}개`,'score'));
-      r.flow.forEach((step,i)=>{const flow=node('div','','flow');flow.append(node('strong',`${i+1}. ${step.title}`),node('div',`입력: ${step.input||'없음'}`),node('div',`결과물: ${step.artifact}`));area.append(flow);});
-      const details=node('details','');details.append(node('summary','실제 도출한 관계'),node('pre',JSON.stringify({before:r.before,input_of:r.input_of},null,2)));area.append(details);
-    }else area.append(node('p',run.error||run.status));
+    if(run.facts)$('facts').textContent=JSON.stringify(run.facts,null,2);
+    if(run.rules)$('rules').textContent=run.rules;
+    if(run.facts && run.logic_labels)WirelogViz.renderInputs($('logic-inputs'),run.facts,run.logic_labels,document);
+    WirelogViz.renderResult($('logic-output'),run,document);
   }
 }
 async function poll(id, epoch) {
   try {
     const run=await api('/api/runs/'+id);
     if(epoch!==state.epoch)return;
-    render(run);$('status').textContent=`${run.kind==='rag'?'RAG 비교':'Wirelog'} · ${run.status} · ${run.phase}${run.error?' · '+run.error:''}`;
+    render(run);$('status').textContent=`${run.kind==='rag'?'RAG 비교':'온톨로지 관계 추론'} · ${run.status} · ${run.phase}${run.error?' · '+run.error:''}`;
     if(run.status==='running'){setTimeout(()=>poll(id,epoch),600);return;}
     // Persisting the result finishes just after status changes; status API is authoritative for the lock.
     const current=await api('/api/status');if(epoch!==state.epoch)return;
@@ -74,7 +72,8 @@ async function init() {
     $('backend').value=config.default_backend;
     $('question').textContent=config.question;$('card').textContent=config.procedure_card;$('system').textContent=config.system_prompt;
     $('facts').textContent=JSON.stringify(config.facts,null,2);$('rules').textContent=config.rules;
-    $('logic-info').textContent=config.logic.detail;
+    $('logic-info').textContent=config.logic.available?'관계 추론을 실행할 준비가 되었습니다.':config.logic.detail;
+    WirelogViz.renderInputs($('logic-inputs'),config.facts,config.logic_labels,document);
     const epoch=++state.epoch;
     for(const [kind,id] of Object.entries(config.latest)){
       const run=await api('/api/runs/'+id);render(run);

@@ -15,7 +15,7 @@ from uuid import uuid4
 from cli_backends import BACKENDS, Cancelled, available_backends, executable_name, generate, validate_backend, validate_model
 from logic_runner import run_logic
 from multistep_rag import DOCS, QUESTION, SYSTEM_PROMPT, PROCEDURE_CARD, STEP_DELIVERABLES, retrieve, build_prompt, score_steps
-from wirelog_reasoning import DEPS, PRODUCES, WIRELOG_PROGRAM
+from wirelog_reasoning import DEPS, PRODUCES, WIRELOG_PROGRAM, STEP_KO, ART_KO
 
 HERE = Path(__file__).resolve().parent
 
@@ -62,7 +62,8 @@ class RunManager:
                 'backend': backend, 'model': self.models[backend], 'top_k': top_k,
                 'question': QUESTION, 'system_prompt': SYSTEM_PROMPT,
                 'retrieved': retrieved, 'procedure_card': PROCEDURE_CARD,
-                'facts': {'dep': DEPS, 'produces': PRODUCES}, 'rules': WIRELOG_PROGRAM,
+                'facts': copy.deepcopy({'dep': DEPS, 'produces': PRODUCES}), 'rules': WIRELOG_PROGRAM,
+                'logic_labels': {'steps': dict(STEP_KO), 'artifacts': dict(ART_KO)},
                 'calls': [], 'result': None, 'error': None, 'started_at': time.time(), 'finished_at': None}
             self.latest[kind] = self.active = ident
             self.cancel_event = threading.Event()
@@ -94,7 +95,7 @@ class RunManager:
                             seconds=round(time.monotonic()-started, 2), mentions=score_steps(result['answer']))
             else:
                 with self.lock:
-                    self.runs[ident]['phase'] = 'Wirelog 추론'
+                    self.runs[ident]['phase'] = '온톨로지 관계 추론'
                 result = self.logic(cancel, python=self.logic_python, timeout=min(self.timeout, 30))
                 with self.lock:
                     self.runs[ident]['result'] = result
@@ -155,6 +156,7 @@ class Handler(BaseHTTPRequestHandler):
                 'backends': available_backends(manager.models), 'logic': manager.logic_status,
                 'question': QUESTION, 'ranked': retrieve(QUESTION, len(DOCS)),
                 'procedure_card': PROCEDURE_CARD, 'system_prompt': SYSTEM_PROMPT,
+                'logic_labels': {'steps': STEP_KO, 'artifacts': ART_KO},
                 'deliverables': STEP_DELIVERABLES, 'facts': {'dep': DEPS, 'produces': PRODUCES}, 'rules': WIRELOG_PROGRAM})
         if path.startswith('/api/runs/'):
             try:
@@ -162,8 +164,8 @@ class Handler(BaseHTTPRequestHandler):
             except KeyError:
                 return self.send_data(404, {'error': '이 서버에 해당 실행이 없습니다.'})
         static = {'/': 'index.html', '/05-rag-multistep/': 'index.html', '/05-rag-multistep': 'index.html',
-                  '/app.js': 'app.js', '/styles.css': 'styles.css',
-                  '/05-rag-multistep/app.js': 'app.js', '/05-rag-multistep/styles.css': 'styles.css'}
+                  '/app.js': 'app.js', '/styles.css': 'styles.css', '/logic-viz.js': 'logic-viz.js',
+                  '/05-rag-multistep/app.js': 'app.js', '/05-rag-multistep/logic-viz.js': 'logic-viz.js', '/05-rag-multistep/styles.css': 'styles.css'}
         if path in static:
             name = static[path]
             mime = {'html': 'text/html', 'js': 'text/javascript', 'css': 'text/css'}[name.rsplit('.', 1)[1]]
