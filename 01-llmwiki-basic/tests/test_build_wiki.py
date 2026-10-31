@@ -32,7 +32,8 @@ class LauncherTests(unittest.TestCase):
         self.bin = Path(self.temp.name) / "bin"
         self.bin.mkdir()
         self.log = Path(self.temp.name) / "calls.jsonl"
-        self.env = dict(os.environ, PATH=str(self.bin), MOCK_LOG=str(self.log))
+        self.env = dict(os.environ, PATH=str(self.bin), MOCK_LOG=str(self.log),
+                        PYTHONIOENCODING="utf-8")
         self.cwd = Path(self.temp.name)
 
     def mock_cli(self, name):
@@ -42,7 +43,7 @@ class LauncherTests(unittest.TestCase):
             f"#!{sys.executable}\n"
             "import json, os, pathlib, signal, sys\n"
             "log = pathlib.Path(os.environ['MOCK_LOG'])\n"
-            "with log.open('a') as stream:\n"
+            "with log.open('a', encoding='utf-8') as stream:\n"
             "    stream.write(json.dumps({'argv': sys.argv, 'cwd': os.getcwd()}) + '\\n')\n"
             "if os.environ.get('MOCK_FAIL_MATCH', '') and os.environ['MOCK_FAIL_MATCH'] in sys.argv[-1]:\n"
             "    sys.exit(23)\n"
@@ -53,10 +54,10 @@ class LauncherTests(unittest.TestCase):
             "wiki = pathlib.Path('01-llmwiki-basic/wiki')\n"
             "assert (wiki / 'sources').is_dir() and (wiki / 'topics').is_dir()\n"
             "for name in ['sources/project-brief.md', 'topics/training-project.md', 'sources/meeting-notes.md']:\n"
-            "    (wiki / name).write_text('# Mock page\\n')\n"
+            "    (wiki / name).write_text('# Mock page\\n', encoding='utf-8')\n"
             "prompt = sys.argv[-1]\n"
             "operation = 'query' if 'query 수행' in prompt else 'lint' if 'lint하라' in prompt else 'ingest'\n"
-            "with (wiki / 'log.md').open('a') as stream:\n"
+            "with (wiki / 'log.md').open('a', encoding='utf-8') as stream:\n"
             "    stream.write('\\n## [2026-10-31] ' + operation + ' | mock run\\n')\n",
             encoding="utf-8",
         )
@@ -64,14 +65,34 @@ class LauncherTests(unittest.TestCase):
         return path
 
     def run_launcher(self, *args):
+        command = [sys.executable, str(self.project / "build_wiki.py"), *args]
+        if os.name == "nt":
+            # Windows cannot execute shebang scripts. Keep real child processes,
+            # but resolve only mock files and invoke them through Python.
+            bootstrap = """
+import pathlib, runpy, shutil, subprocess, sys
+from unittest.mock import patch
+real_run = subprocess.run
+mock_bin = pathlib.Path(sys.argv[1])
+def which(name):
+    path = mock_bin / name
+    return str(path) if path.is_file() else None
+def run(argv, **kwargs):
+    return real_run([sys.executable, *argv], **kwargs)
+sys.argv = sys.argv[2:]
+with patch.object(shutil, 'which', which), patch.object(subprocess, 'run', run):
+    runpy.run_path(sys.argv[0], run_name='__main__')
+"""
+            command = [sys.executable, "-c", bootstrap, str(self.bin),
+                       str(self.project / "build_wiki.py"), *args]
         return subprocess.run(
-            [sys.executable, str(self.project / "build_wiki.py"), *args],
+            command,
             cwd=self.cwd, env=self.env, stdin=subprocess.DEVNULL,
-            text=True, capture_output=True,
+            text=True, encoding="utf-8", capture_output=True,
         )
 
     def calls(self):
-        return [json.loads(line) for line in self.log.read_text().splitlines()] if self.log.exists() else []
+        return [json.loads(line) for line in self.log.read_text(encoding="utf-8").splitlines()] if self.log.exists() else []
 
     def test_each_backend_receives_exact_argv_cwd_and_multiline_prompt(self):
         expected = {
@@ -97,7 +118,7 @@ class LauncherTests(unittest.TestCase):
         self.mock_cli("codex")
         result = self.run_launcher("--agent", "codex")
         self.assertEqual(result.returncode, 0, result.stderr)
-        expected = [(self.project / f"prompts/{step}.txt").read_text() for step in launcher.STEPS]
+        expected = [(self.project / f"prompts/{step}.txt").read_text(encoding="utf-8") for step in launcher.STEPS]
         self.assertEqual([call["argv"][-1] for call in self.calls()], expected)
 
     def test_individual_steps_make_only_one_call(self):
@@ -109,7 +130,7 @@ class LauncherTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(len(self.calls()), before + 1)
                 self.assertEqual(self.calls()[-1]["argv"][-1],
-                                 (self.project / f"prompts/{step}.txt").read_text())
+                                 (self.project / f"prompts/{step}.txt").read_text(encoding="utf-8"))
 
     def test_failure_stops_later_calls_and_preserves_exit_code(self):
         self.mock_cli("copilot")
@@ -143,12 +164,12 @@ class LauncherTests(unittest.TestCase):
         for name in (*launcher.ALL_PAGES, "index.md"):
             path = wiki / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("# page\n")
+            path.write_text("# page\n", encoding="utf-8")
         old = "# 이력\n\n## [2026-10-30] ingest | previous\n"
         for new in (old, "# replaced\n## [2026-10-31] query | run\n",
                     old + "\n## [2026-10-31] lint | wrong operation\n"):
             with self.subTest(log=new):
-                (wiki / "log.md").write_text(new)
+                (wiki / "log.md").write_text(new, encoding="utf-8")
                 with self.assertRaises(ValueError):
                     launcher.check_stage_result(wiki, "query", old)
 
@@ -166,7 +187,7 @@ class LauncherTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("cursor-agent", result.stdout)
         self.assertEqual(result.stdout.count("명령 argv (JSON):"), 4)
-        self.assertIn((self.project / "prompts/lint.txt").read_text(), result.stdout)
+        self.assertIn((self.project / "prompts/lint.txt").read_text(encoding="utf-8"), result.stdout)
         self.assertFalse(self.calls())
         after = {p.relative_to(self.root): p.read_bytes() for p in self.root.rglob("*") if p.is_file()}
         self.assertEqual(before, after)
@@ -192,7 +213,7 @@ class LauncherTests(unittest.TestCase):
                 elif isinstance(content, bytes):
                     path.write_bytes(content)
                 else:
-                    path.write_text(content)
+                    path.write_text(content, encoding="utf-8")
                 result = self.run_launcher("--agent", "codex")
                 self.assertEqual(result.returncode, 2)
                 self.assertFalse(self.calls())
