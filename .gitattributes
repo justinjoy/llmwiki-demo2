@@ -1,0 +1,18 @@
+# Normalize text files to LF across platforms; detect binary files automatically.
+* text=auto eol=lf
+
+# Use Python-aware diff headers.
+*.py text diff=python
+
+# Keep common document and image formats binary.
+*.pdf binary
+*.pptx binary
+*.docx binary
+*.xlsx binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.zip binary
