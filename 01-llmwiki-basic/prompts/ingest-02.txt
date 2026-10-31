@@ -4,6 +4,8 @@
 사실이나 성공 기록을 만들지 말고 ingest-01을 먼저 실행해야 한다고 보고하고 중단하라.
 raw/02-meeting-notes.md를 ingest하여 wiki/sources/meeting-notes.md를 만들고
 기존 wiki/topics/training-project.md를 갱신하라. 같은 주제의 중복 페이지를 만들지 마라.
+새 지식 파일은 wiki/sources/meeting-notes.md 하나만 만들고, 나머지는 기존 파일을 직접 편집하라.
+.new, .tmp, placeholder 등의 임시 파일이나 주제 복사본을 만들지 마라.
 확정된 일정 변경과 승인되지 않은 인원·교육 방식 제안을 구분하라.
 충돌은 두 원본의 절 링크와 확인 질문을 함께 남기고 최신 날짜만으로 덮어쓰지 마라.
 원본 요약과 주제를 서로 연결하고 index를 갱신하라. log에는 실제 작업 기록만 추가하라.

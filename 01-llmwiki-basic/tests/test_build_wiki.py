@@ -28,6 +28,7 @@ class LauncherTests(unittest.TestCase):
         self.project.mkdir(parents=True)
         shutil.copy(SOURCE / "build_wiki.py", self.project)
         shutil.copytree(SOURCE / "prompts", self.project / "prompts")
+        shutil.copytree(SOURCE / "wiki", self.project / "wiki")
         self.bin = Path(self.temp.name) / "bin"
         self.bin.mkdir()
         self.log = Path(self.temp.name) / "calls.jsonl"
@@ -46,7 +47,17 @@ class LauncherTests(unittest.TestCase):
             "if os.environ.get('MOCK_FAIL_MATCH', '') and os.environ['MOCK_FAIL_MATCH'] in sys.argv[-1]:\n"
             "    sys.exit(23)\n"
             "if os.environ.get('MOCK_SIGNAL'):\n"
-            "    os.kill(os.getpid(), signal.SIGTERM)\n",
+            "    os.kill(os.getpid(), signal.SIGTERM)\n"
+            "if os.environ.get('MOCK_NO_OUTPUT'):\n"
+            "    sys.exit(0)\n"
+            "wiki = pathlib.Path('01-llmwiki-basic/wiki')\n"
+            "assert (wiki / 'sources').is_dir() and (wiki / 'topics').is_dir()\n"
+            "for name in ['sources/project-brief.md', 'topics/training-project.md', 'sources/meeting-notes.md']:\n"
+            "    (wiki / name).write_text('# Mock page\\n')\n"
+            "prompt = sys.argv[-1]\n"
+            "operation = 'query' if 'query 수행' in prompt else 'lint' if 'lint하라' in prompt else 'ingest'\n"
+            "with (wiki / 'log.md').open('a') as stream:\n"
+            "    stream.write('\\n## [2026-10-31] ' + operation + ' | mock run\\n')\n",
             encoding="utf-8",
         )
         path.chmod(0o755)
@@ -68,7 +79,7 @@ class LauncherTests(unittest.TestCase):
             "codex": ["codex", "exec", "--sandbox", "workspace-write"],
             "claude": ["claude", "--permission-mode", "acceptEdits", "-p"],
             "cursor": ["cursor-agent", "--force", "-p"],
-            "copilot": ["copilot", "--allow-tool=read", "--allow-tool=write", "-p"],
+            "copilot": ["copilot", "--allow-tool=read", "--allow-tool=write", "--assisted-approval", "-p"],
         }
         prompt = "한글과 공백\n'quoted' $(touch SHOULD_NOT_EXIST); `echo nope`\n"
         (self.project / "prompts/ingest-01.txt").write_text(prompt, encoding="utf-8")
@@ -108,6 +119,38 @@ class LauncherTests(unittest.TestCase):
         self.assertEqual(len(self.calls()), 2)
         self.assertIn("ingest-02", result.stderr)
         self.assertNotIn("CLI 호출을 마쳤습니다", result.stdout)
+
+    def test_zero_exit_without_output_stops_all(self):
+        self.mock_cli("copilot")
+        self.env["MOCK_NO_OUTPUT"] = "1"
+        result = self.run_launcher("--agent", "copilot")
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(len(self.calls()), 1)
+        self.assertIn("산출물 검사 실패", result.stderr)
+        self.assertNotIn("CLI 호출 종료", result.stdout)
+
+    def test_later_steps_require_existing_pages_before_call(self):
+        self.mock_cli("copilot")
+        for step in ("ingest-02", "query", "lint"):
+            with self.subTest(step=step):
+                result = self.run_launcher("--agent", "copilot", "--step", step)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn("준비 실패", result.stderr)
+                self.assertFalse(self.calls())
+
+    def test_result_requires_new_log_entry_and_preserves_old_log(self):
+        wiki = self.project / "wiki"
+        for name in (*launcher.ALL_PAGES, "index.md"):
+            path = wiki / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("# page\n")
+        old = "# 이력\n\n## [2026-10-30] ingest | previous\n"
+        for new in (old, "# replaced\n## [2026-10-31] query | run\n",
+                    old + "\n## [2026-10-31] lint | wrong operation\n"):
+            with self.subTest(log=new):
+                (wiki / "log.md").write_text(new)
+                with self.assertRaises(ValueError):
+                    launcher.check_stage_result(wiki, "query", old)
 
     @unittest.skipUnless(os.name == "posix", "POSIX signal test")
     def test_signal_exit_is_converted_and_stops(self):

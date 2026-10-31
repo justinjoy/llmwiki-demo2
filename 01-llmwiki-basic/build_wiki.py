@@ -4,6 +4,7 @@
 import argparse
 import json
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -14,9 +15,30 @@ COMMANDS = {
     "codex": ["codex", "exec", "--sandbox", "workspace-write"],
     "claude": ["claude", "--permission-mode", "acceptEdits", "-p"],
     "cursor": ["cursor-agent", "--force", "-p"],
-    "copilot": ["copilot", "--allow-tool=read", "--allow-tool=write", "-p"],
+    "copilot": ["copilot", "--allow-tool=read", "--allow-tool=write", "--assisted-approval", "-p"],
 }
 STEPS = ("ingest-01", "ingest-02", "query", "lint")
+FIRST_PAGES = ("sources/project-brief.md", "topics/training-project.md")
+ALL_PAGES = (*FIRST_PAGES, "sources/meeting-notes.md")
+
+
+def require_pages(wiki, pages):
+    for name in pages:
+        path = wiki / name
+        if not path.is_file() or not path.read_text(encoding="utf-8").strip():
+            raise ValueError(f"필수 위키 파일이 없거나 비어 있습니다: {path}")
+
+
+def check_stage_result(wiki, step, previous_log):
+    pages = FIRST_PAGES if step == "ingest-01" else ALL_PAGES
+    require_pages(wiki, (*pages, "index.md", "log.md"))
+    log = (wiki / "log.md").read_text(encoding="utf-8")
+    operation = "ingest" if step.startswith("ingest-") else step
+    heading = rf"^## \[\d{{4}}-\d{{2}}-\d{{2}}\] {operation} \|"
+    if not log.startswith(previous_log):
+        raise ValueError("기존 wiki/log.md 내용이 변경되었습니다. 과거 기록을 보존해야 합니다.")
+    if not re.search(heading, log[len(previous_log):], re.MULTILINE):
+        raise ValueError(f"wiki/log.md에 새 {operation} 수행 기록이 없습니다.")
 
 
 def select_agent(parser):
@@ -81,6 +103,20 @@ def main(argv=None):
             print("명령 argv (JSON): " + json.dumps(argv, ensure_ascii=False))
             print("프롬프트:\n" + prompt)
             continue
+        wiki = script_dir / "wiki"
+        try:
+            if step != "ingest-01":
+                required = FIRST_PAGES if step == "ingest-02" else ALL_PAGES
+                require_pages(wiki, required)
+            # Copilot의 파일 도구는 부모 폴더를 만들지 않는다. 셸 권한 없이 준비한다.
+            if step.startswith("ingest-"):
+                for folder in ("sources", "topics"):
+                    (wiki / folder).mkdir(parents=True, exist_ok=True)
+            log_path = wiki / "log.md"
+            previous_log = log_path.read_text(encoding="utf-8") if log_path.exists() else ""
+        except (OSError, UnicodeError, ValueError) as exc:
+            print(f"오류: {step} 준비 실패: {exc}", file=sys.stderr)
+            return 1
         try:
             # 셸을 거치지 않아 공백·개행·셸 메타문자가 단일 프롬프트 인자로 유지된다.
             result = subprocess.run(argv, cwd=repo_root, shell=False)
@@ -92,6 +128,13 @@ def main(argv=None):
             print(f"오류: {step} 단계의 CLI가 종료 코드 {code}로 실패했습니다. "
                   "이후 단계는 실행하지 않습니다. 이미 반영된 파일은 남습니다.", file=sys.stderr)
             return code
+        try:
+            check_stage_result(wiki, step, previous_log)
+        except (OSError, UnicodeError, ValueError) as exc:
+            print(f"오류: {step} 산출물 검사 실패: {exc} "
+                  "CLI 종료 코드는 0이지만 이후 단계를 실행하지 않습니다. "
+                  "CLI 출력과 위키를 확인하세요. 이미 반영된 파일은 남습니다.", file=sys.stderr)
+            return 1
         print(f"CLI 호출 종료: {step}", flush=True)
 
     if args.dry_run:

@@ -39,9 +39,11 @@ python3 01-llmwiki-basic/build_wiki.py --agent copilot
 | `codex` | `codex` | `codex exec --sandbox workspace-write PROMPT` | [Codex CLI](https://learn.chatgpt.com/docs/non-interactive-mode) — `codex login` |
 | `claude` | `claude` (Claude Code) | `claude --permission-mode acceptEdits -p PROMPT` | [Claude Code CLI](https://code.claude.com/docs/en/cli-reference) — 먼저 `claude`를 실행해 로그인 |
 | `cursor` | `cursor-agent` | `cursor-agent --force -p PROMPT` | [Cursor CLI](https://cursor.com/docs/cli/reference/parameters) — `cursor-agent login` |
-| `copilot` | `copilot` (GitHub Copilot CLI) | `copilot --allow-tool=read --allow-tool=write -p PROMPT` | [Copilot CLI](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-programmatic-reference) — `copilot login` |
+| `copilot` | `copilot` (GitHub Copilot CLI) | `copilot --allow-tool=read --allow-tool=write --assisted-approval -p PROMPT` | [Copilot CLI](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-programmatic-reference) — `copilot login` |
 
 `cursor`는 에디터 실행 명령이 아닌 `cursor-agent`를 사용합니다. `copilot`은 기존 `gh copilot` 확장과 다릅니다. CLI 버전에 따라 옵션과 승인 정책이 달라질 수 있으므로 설치된 CLI의 `--help`를 확인하세요. 위 옵션은 파일 편집을 가능하게 하며 Cursor의 `--force`는 명시적으로 거부된 항목 외 명령도 허용합니다. 원본 보존과 `wiki/` 쓰기 범위는 프롬프트 규약이고, 모든 도구에 동일한 파일 접근 격리를 제공하는 것은 아닙니다. 계정·관리 정책에서 작업을 거부하면 CLI 진단을 확인하세요.
+
+Copilot은 명시적으로 읽기·쓰기를 허용하고, 추가 권한 요청에는 `--assisted-approval`의 자동 심사를 사용합니다. 읽기·쓰기 허용만으로는 모델이 만든 임시 파일을 셸 명령으로 정리하지 못하는 사례가 실제 실행에서 발생했습니다. 자동 심사는 모든 요청의 승인을 보장하지 않으며 기존 거부 규칙과 관리 정책을 따릅니다. [Copilot 권한 문서](https://docs.github.com/en/copilot/how-tos/copilot-cli/use-copilot-cli/allowing-tools)
 
 실행 전에 명령의 **인자 배열(JSON)**과 전체 프롬프트를 확인할 수 있습니다. 미리보기는 CLI 설치·로그인 없이 사용할 수 있고 파일을 수정하지 않습니다.
 
@@ -54,9 +56,11 @@ python3 01-llmwiki-basic/build_wiki.py --agent claude --step lint
 python3 01-llmwiki-basic/build_wiki.py --help
 ```
 
-`ingest-02`는 첫 ingest 결과가 필요하고, 이 실행기의 `query`와 `lint`는 두 ingest 결과가 모두 필요합니다. 단독 실행 전 기존 위키를 확인하세요. 도구를 바꿔 다음 단계를 실행해도 같은 위키 파일을 읽습니다. 비대화형 환경에서는 `--agent`를 반드시 지정합니다.
+`ingest-02`는 첫 ingest 결과가 필요하고, 이 실행기의 `query`와 `lint`는 두 ingest 결과가 모두 필요합니다. 실행기가 필요한 선행 페이지를 검사하며 누락되거나 비어 있으면 CLI를 호출하지 않습니다. 도구를 바꿔 다음 단계를 실행해도 같은 위키 파일을 읽습니다. 비대화형 환경에서는 `--agent`를 반드시 지정합니다.
 
-CLI가 실패 코드로 종료하면 이후 호출을 중단하고 해당 코드를 반환합니다. **이미 반영된 파일은 남으며 자동 복구·초기화하지 않습니다.** 위키를 검토한 뒤 실패한 단계만 다시 실행하세요. CLI가 종료 코드 0을 반환해도 작업 거부나 불완전한 결과가 있을 수 있습니다. 스크립트는 위키의 내용이나 단계별 산출물 존재를 자동 검증하지 않으므로 아래 완료 기준과 CLI 출력을 확인해야 합니다. 재실행은 기존 위키 갱신 요청이며 시작 상태로 초기화하지 않습니다.
+ingest 실행 전에 `wiki/sources/`, `wiki/topics/`를 Python으로 준비합니다. 따라서 부모 폴더 생성에 별도 셸 권한이 필요한 CLI도 파일 도구로 페이지를 만들 수 있습니다. CLI 종료 후에는 필수 페이지·index·log가 비어 있지 않은지, 기존 log가 그대로 보존되고 해당 작업의 날짜가 있는 기록이 추가됐는지 검사합니다. 종료 코드 0이어도 이 검사를 통과하지 못하면 코드 1로 중단합니다.
+
+CLI가 실패 코드로 종료하면 이후 호출을 중단하고 해당 코드를 반환합니다. **이미 반영된 파일은 남으며 자동 복구·초기화하지 않습니다.** 위키를 검토한 뒤 실패한 단계만 다시 실행하세요. 위 검사는 구조적인 완료 조건이며 사실의 정확성·출처 링크·index 내용까지 보장하지 않습니다. 아래 완료 기준과 CLI 출력을 확인해야 합니다. 재실행은 기존 위키 갱신 요청이며 시작 상태로 초기화하지 않습니다.
 
 개발 검증은 실제 모델 호출 없이 모의 CLI로 인자·작업 위치·단계 순서·실패 전파·미리보기의 무호출을 검사합니다.
 
@@ -64,7 +68,7 @@ CLI가 실패 코드로 종료하면 이후 호출을 중단하고 해당 코드
 python3 -m unittest discover -s 01-llmwiki-basic/tests -v
 ```
 
-이 검증은 각 서비스의 로그인 성공이나 실제 위키 생성 품질을 보장하지 않습니다. 아래 수동 실습 프롬프트도 계속 사용할 수 있습니다.
+모의 검증은 각 서비스의 로그인 성공이나 실제 위키 생성 품질을 보장하지 않습니다. 실제 모델 호출 결과와 수정 내역은 [실제 CLI 검증 기록](tests/live-test-results.md)에 따로 기록합니다. 아래 수동 실습 프롬프트도 계속 사용할 수 있습니다.
 
 ## 세 계층
 
@@ -136,6 +140,8 @@ index를 갱신하고 log에는 새 기록만 추가하라. raw/와 과거 log�
 01-llmwiki-basic/wiki/index.md부터 관련 위키를 찾아 읽고 다음에 답하라.
 “이 교육의 현재 일정과 운영 방식은 무엇이며, 안내문 발송 전에 무엇을 확인해야 하는가?”
 확정 사실·제안·미확정 사항을 구분하고 위키 및 원본 근거를 링크하라.
+터미널 답변의 링크는 저장소 루트 기준 01-llmwiki-basic/wiki/... 또는
+01-llmwiki-basic/raw/... 경로로 표시하라. 위키 내부 상대 링크를 그대로 복사하지 마라.
 자료에 없는 담당자나 결정을 만들어내지 마라. 이번에는 답변 파일을 만들지 말고
 규약에 따라 query 수행 사실만 wiki/log.md에 추가하라.
 ```
