@@ -4,7 +4,7 @@
 
 ## 실행
 
-Python 3.11 이상과 해당 플랫폼의 PyreWire wheel이 필요합니다. 이 저장소에서는 macOS arm64 / Python 3.11 / PyreWire 1.0.5로 검증했습니다.
+Python 3.11 이상과 해당 플랫폼의 PyreWire wheel이 필요합니다. 이 저장소에서는 macOS arm64 / Python 3.11 / PyreWire 1.1.3로 검증했습니다.
 
 ```bash
 python3.11 -m venv 05-rag-multistep/.venv
