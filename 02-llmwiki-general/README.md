@@ -37,6 +37,8 @@ python 02-llmwiki-general/build_wiki.py --agent copilot
 | cursor | `cursor-agent --force -p PROMPT` |
 | copilot | `copilot --allow-tool=read --allow-tool=write --assisted-approval -p PROMPT` |
 
+Windows에서는 PATH의 `copilot.exe`를 직접 호출합니다. npm의 `copilot.cmd` 래퍼는 여러 줄 `-p` 프롬프트를 유실할 수 있으므로 사용하지 않습니다. `copilot.exe`가 없으면 Windows용 네이티브 Copilot CLI를 설치하고 PATH에 추가하세요.
+
 설치·로그인 안내는 [basic의 CLI 표](../01-llmwiki-basic/README.md#python-스크립트로-실행)를 참고하세요. 모델·계정·인증은 각 CLI의 기존 설정을 사용합니다. 버전에 따른 옵션 변경은 해당 CLI의 `--help`에서 확인하세요. Cursor의 `--force`와 Copilot 자동 승인 옵션의 범위도 basic 안내를 참고하세요. 원본 보존 규약은 모든 CLI에 동일한 OS 수준 접근 격리를 제공하는 기능이 아닙니다.
 
 스크립트는 어느 위치에서 호출해도 자신의 폴더를 기준으로 raw를 찾고, **`02-llmwiki-general/`을 CLI cwd로 사용**합니다. basic의 저장소 루트 cwd와 다릅니다. 다른 디렉터리에서는 스크립트의 절대 경로를 지정하세요.

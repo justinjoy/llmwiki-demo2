@@ -188,8 +188,12 @@ class WorkflowTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve() / 'repo 공백 $literal' / '02-llmwiki-general'
-        shutil.copytree(SOURCE, self.root, ignore=shutil.ignore_patterns('.venv', '__pycache__', '.prepared', '.llmwiki.lock'))
+        shutil.copytree(SOURCE, self.root, ignore=shutil.ignore_patterns('.venv', '__pycache__', '.prepared', '.llmwiki.lock', 'raw', 'wiki'))
         self.raw = self.root / 'raw'
+        self.raw.mkdir()
+        (self.root / 'wiki').mkdir()
+        for name in ('index.md', 'log.md'):
+            (self.root / 'wiki' / name).write_text('# Test wiki\n', encoding='utf-8')
         (self.raw / '한글 $(`x`).txt').write_text('확정 내용', encoding='utf-8')
         self.calls = []
         self.original = self.root / 'build_wiki.py'
@@ -225,7 +229,8 @@ class WorkflowTests(unittest.TestCase):
             with self.subTest(agent=agent):
                 self.assertEqual(self.run_app('--agent', agent, '--step', 'ingest', '--force'), 0)
                 argv, data = self.calls[-1]
-                self.assertEqual(argv[:-1], ['/mock/' + expected[0], *expected[1:]])
+                executable = 'copilot.exe' if sys.platform == 'win32' and agent == 'copilot' else expected[0]
+                self.assertEqual(argv[:-1], ['/mock/' + executable, *expected[1:]])
                 self.assertIn('$(`x`)', data['document']['original'])
 
     def test_all_order_optional_question_raw_preserved_and_incremental(self):
@@ -300,6 +305,21 @@ class WorkflowTests(unittest.TestCase):
         with patch.object(app.shutil, 'which', return_value='/bad'), patch.object(app.subprocess, 'run', side_effect=OSError('bad')):
             self.assertEqual(app.run_agent(self.root, 'codex', 'ingest', prompt), 126)
 
+    def test_windows_copilot_preserves_multiline_prompt(self):
+        prompt = app.render_prompt(self.root, 'ingest', question='한글\n"quoted" & echo %PATH% $(`x`)')
+        with patch.object(app.sys, 'platform', 'win32'), patch.object(app.shutil, 'which', return_value='C:/Tools/copilot.exe') as which, patch.object(app.subprocess, 'run', return_value=subprocess.CompletedProcess([], 23)) as run:
+            self.assertEqual(app.run_agent(self.root, 'copilot', 'ingest', prompt), 23)
+        which.assert_called_once_with('copilot.exe')
+        run.assert_called_once_with(['C:/Tools/copilot.exe', *app.COMMANDS['copilot'][1:], prompt], cwd=self.root, shell=False)
+
+    def test_windows_copilot_rejects_cmd_only_installation(self):
+        def lookup(name):
+            return 'C:/Tools/copilot.cmd' if name == 'copilot' else None
+        with patch.object(app.sys, 'platform', 'win32'), patch.object(app.shutil, 'which', side_effect=lookup), patch.object(app.subprocess, 'run') as run, patch('sys.stderr', new_callable=io.StringIO) as errors:
+            self.assertEqual(app.run_agent(self.root, 'copilot', 'ingest', 'first\nsecond'), 127)
+        run.assert_not_called()
+        self.assertIn('copilot.exe', errors.getvalue())
+
     def test_real_child_processes_for_all_cli_adapters(self):
         fake = self.root / 'fake_cli.py'
         fake.write_text(r"""import json, pathlib, sys
@@ -329,7 +349,7 @@ runpy.run_path(script, run_name='__main__')
 """
         for agent in app.COMMANDS:
             with self.subTest(agent=agent):
-                result = subprocess.run([sys.executable, '-c', bootstrap, str(self.original), str(fake), agent],
+                result = subprocess.run([sys.executable, '-X', 'utf8', '-c', bootstrap, str(self.original), str(fake), agent],
                                         cwd=self.root.parent, text=True, capture_output=True, encoding='utf-8')
                 self.assertEqual(result.returncode, 0, result.stderr)
         records = [json.loads(line) for line in (self.root / 'child-calls.jsonl').read_text(encoding='utf-8').splitlines()]

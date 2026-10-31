@@ -298,8 +298,13 @@ def raw_snapshot(root):
 
 def run_agent(root, agent, operation, prompt, record=None):
     command = COMMANDS[agent]
-    executable = shutil.which(command[0])
+    # CMD wrappers truncate multiline -p arguments on Windows.
+    native_copilot = sys.platform == "win32" and agent == "copilot"
+    executable = shutil.which("copilot.exe" if native_copilot else command[0])
     if executable is None:
+        if native_copilot:
+            print("오류: copilot.exe가 PATH에 없습니다. Windows용 Copilot 네이티브 실행 파일을 설치하고 PATH에 추가하세요. CMD 래퍼는 여러 줄 -p 프롬프트를 안전하게 전달하지 못합니다.", file=sys.stderr)
+            return 127
         print(f"오류: {command[0]} CLI가 PATH에 없습니다. 먼저 설치·로그인하세요.", file=sys.stderr)
         return 127
     for name in ("sources", "topics", "answers"):
