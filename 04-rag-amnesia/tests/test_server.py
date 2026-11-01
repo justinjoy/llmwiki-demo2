@@ -212,6 +212,16 @@ class HttpTests(unittest.TestCase):
         with response:
             return response.status, json.loads(response.read())
 
+    def test_markdown_readme_is_served(self):
+        with urlopen(self.base + '/02-rag-amnesia/README.md', timeout=5) as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.headers.get_content_type(), 'text/markdown')
+            self.assertEqual(response.headers.get_content_charset(), 'utf-8')
+            self.assertEqual(response.read(), (server.HERE / 'README.md').read_bytes())
+        with self.assertRaises(HTTPError) as error:
+            urlopen(self.base + '/02-rag-amnesia/README.txt', timeout=5)
+        self.assertEqual(error.exception.code, 404)
+
     def test_http_backend_availability_validation_and_selected_run(self):
         code, info = self.request('/api/status')
         self.assertEqual(code, 200)

@@ -148,7 +148,7 @@ STATIC_FILES = {
     **{f"/02-rag-amnesia/{name}": (HERE / name, mime) for name, mime in (
         ("index.html", "text/html; charset=utf-8"), ("styles.css", "text/css; charset=utf-8"),
         ("app.js", "text/javascript; charset=utf-8"), ("data.js", "text/javascript; charset=utf-8"),
-        ("rag.js", "text/javascript; charset=utf-8"), ("README.txt", "text/plain; charset=utf-8"),
+        ("rag.js", "text/javascript; charset=utf-8"), ("README.md", "text/markdown; charset=utf-8"),
     )},
     **{f"/01-mimic-rag/{name}": (HERE.parent / "01-mimic-rag" / name, mime) for name, mime in (
         ("index.html", "text/html; charset=utf-8"), ("styles.css", "text/css; charset=utf-8"),
