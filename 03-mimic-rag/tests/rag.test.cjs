@@ -6,7 +6,7 @@ const { DOCS, embed, cosine, retrieve } = require('../rag.js');
 
 test('browser retrieval matches the original Python implementation', () => {
   const queries = ['환불 배송 회원', '환불은 언제까지 가능한가요?', '배송은 며칠 걸리나요?', '회원 등급은 어떻게 결정되나요?', '오늘 날씨 어때요?', '', ' ', '가', '환불환불환불', '환불\t배송\n회원', '😀환불😀', ...DOCS];
-  const script = 'import json, sys\nfrom mini_rag import retrieve\nprint(json.dumps([retrieve(q) for q in json.load(sys.stdin)]))';
+  const script = 'import json, sys\nfrom mimic_rag import retrieve\nprint(json.dumps([retrieve(q) for q in json.load(sys.stdin)]))';
   const expected = JSON.parse(execFileSync('python3', ['-B', '-c', script], {
     cwd: path.join(__dirname, '..'), input: JSON.stringify(queries), encoding: 'utf8'
   }));
